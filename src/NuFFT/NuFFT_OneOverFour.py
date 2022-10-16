@@ -14,10 +14,10 @@ if __name__ == '__main__':
     Ts = 1 / fs
 
     # Parameter setting
-    numSnap = 2 ** 8
+    numSnap = 2 ** 6
     N = numSnap
 
-    numFreq_factor = 4  # 2, 4, 8, 16
+    numFreq_factor = 8  # 2, 4, 8, 16
     M = numFreq_factor * N
 
     numTx = 4
