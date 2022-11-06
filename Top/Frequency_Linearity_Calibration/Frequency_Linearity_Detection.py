@@ -6,7 +6,9 @@ import numpy as np
 font_times = fm.FontProperties(family='Times New Roman', stretch=0)
 current_path = os.path.dirname(__file__)
 sys.path.append(os.path.join(current_path, '..', '..', 'src', 'PhaseModule'))
+sys.path.append(os.path.join(current_path, '..', '..', 'src', 'FilterDesign'))
 import PhaseModule
+import FilterModule
 
 GHz = 1e9
 MHz = 1e6
@@ -14,7 +16,7 @@ us = 1e-6
 ns = 1e-9
 
 
-def create_ideal_phase(cfg):
+def create_pll_phase(cfg):
     fs = cfg['fs']
     ts = 1/fs
     B = cfg['B']
@@ -23,18 +25,19 @@ def create_ideal_phase(cfg):
     N = int(fs * PRI)
     t_axis = np.arange(N) * ts
     ctrl = cfg['ctrl']
-
+    tau = cfg['tau']
 
     """ Ideal phase """
     if ctrl == 'positive':
         ideal_phase = 2 * np.pi * (alpha * (t_axis ** 2) / 2)  # up sweep --> Nyquist sampling
-    elif ctrl == 'negative':
-        ideal_phase = 2 * np.pi * (B * t_axis - alpha * (t_axis ** 2) / 2)  # down sweep --> Nyquist sampling
+        phase_delay = 2 * np.pi * (alpha * ((t_axis - tau) ** 2) / 2)  # up sweep --> Nyquist sampling
     else:
-        assert (ctrl == 'positive') or (ctrl == 'negative')
+        ideal_phase = 2 * np.pi * (B * t_axis - alpha * (t_axis ** 2) / 2)  # down sweep --> Nyquist sampling
+        phase_delay = 2 * np.pi * (B * (t_axis - tau) - alpha * ((t_axis - tau) ** 2) / 2)
 
     ideal_freq = (ideal_phase[1:] - ideal_phase[0:-1]) / ts / 2 / np.pi  # freq --> Nyquist sampling
 
+    """ Ideal IQ Demodulation """
     s_ideal = np.exp(1j * ideal_phase)
     s_i = np.real(s_ideal)
     s_q = np.imag(s_ideal)
@@ -51,15 +54,14 @@ def create_ideal_phase(cfg):
     """ ideal Phase """
     fig_phase = plt.figure(figsize=(7, 5), dpi=100)
     ax_phase = fig_phase.add_subplot()
-    ax_phase.set_title('Phase of PLL after IQ Demodulation - ' + ctrl + ' chirp',
+    ax_phase.set_title('Ideal Phase of PLL after IQ Demodulation - ' + ctrl + ' chirp',
                        fontsize=12, fontproperties=font_times)
     ax_phase.set_xlabel('time - us', fontsize=10, fontproperties=font_times)
-    ax_phase.set_ylabel('Unwrapping Phase', fontsize=10, fontproperties=font_times)
+    ax_phase.set_ylabel('Unwrapping Phase - rad.', fontsize=10, fontproperties=font_times)
     ax_phase.plot(t_axis / us, ideal_phase, label='ideal phase - Nyquist')
     ax_phase.plot(t_axis / us, ideal_phase_unwrap, label='ideal phase - sub-Nyquist sampling')
-    # ax_phase.plot(t_axis / us, practical_phase_unwrap, label='estimated phase - unwrap')
     plt.legend(fontsize=8)
-    plt.savefig(ctrl + '_Sweeping_phase.pdf')
+    plt.savefig(ctrl + '_ideal_sweeping_phase.pdf')
 
     """ ideal Frequency """
     fig_freq = plt.figure(figsize=(7, 5), dpi=100)
@@ -67,131 +69,81 @@ def create_ideal_phase(cfg):
     ax_freq.set_title('Sweeping Frequency of PLL after IQ Demodulation - ' + ctrl + ' chirp',
                       fontsize=12, fontproperties=font_times)
     ax_freq.set_xlabel('time - us', fontsize=10, fontproperties=font_times)
-    ax_freq.set_ylabel('Freq', fontsize=10, fontproperties=font_times)
+    ax_freq.set_ylabel('Freq - MHz', fontsize=10, fontproperties=font_times)
     ax_freq.plot(t_axis[1:] / us, ideal_freq / MHz, label='ideal freq - Nyquist')
     ax_freq.plot(t_axis[1:] / us, ideal_freq_unwrap / MHz, label='ideal freq - sub-Nyquist sampling')
     plt.legend(fontsize=8)
-    plt.savefig(ctrl + '_Sweeping_Freq.pdf')
-    return ideal_phase, ideal_freq, ideal_phase_unwrap, ideal_freq_unwrap
+    plt.savefig(ctrl + '_ideal_sweeping_Freq.pdf')
+    return ideal_phase, ideal_freq, ideal_phase_unwrap, ideal_freq_unwrap, phase_delay
 
 
 def create_phase_error(cfg):
+    """ create phase error, including real phase error and delay phase error """
     fs = cfg['fs']
     ts = 1 / fs
-    B = cfg['B']
     PRI = cfg['PRI']
-    alpha = B / PRI
-    phi0 = cfg['phi0']
     N = int(fs * PRI)
     t_axis = np.arange(N) * ts
-    ctrl = cfg['ctrl']
     tau = cfg['tau']
     amp = cfg['amp_error']
     f_error = cfg['f_error']
     assert len(amp) == len(f_error)
     num_error = len(f_error)
+    ctrl = cfg['ctrl']
 
-    phase_error = np.zeros(N, dtype=float)
+    phase_error_ideal = np.zeros(N, dtype=float)
+    phase_error_delay = np.zeros(N, dtype=float)
     for k in range(num_error):
-        phase_error = phase_error + amp[k] * np.cos(2 * np.pi * f_error[k] * MHz * (t_axis - tau))
+        phase_error_ideal = phase_error_ideal + amp[k] * np.sin(2 * np.pi * f_error[k] * MHz * t_axis)
+        phase_error_delay = phase_error_delay + amp[k] * np.sin(2 * np.pi * f_error[k] * MHz * (t_axis - tau))
 
-    return phase_error
+    real_freq_diff = (phase_error_ideal[1:] - phase_error_ideal[0:-1]) / ts / 2 / np.pi
+
+    """ Figure """
+    """ Phase error """
+    fig_phase = plt.figure(figsize=(7, 5), dpi=100)
+    ax_phase = fig_phase.add_subplot()
+    ax_phase.set_title('Phase error',
+                       fontsize=12, fontproperties=font_times)
+    ax_phase.set_xlabel('time - us', fontsize=10, fontproperties=font_times)
+    ax_phase.set_ylabel('Phase - rad.', fontsize=10, fontproperties=font_times)
+    ax_phase.plot(t_axis / us, phase_error_ideal, label='real phase error')
+    plt.legend(fontsize=8)
+    plt.savefig('real_phase_error.pdf')
+
+    """ ideal Frequency """
+    fig_freq = plt.figure(figsize=(7, 5), dpi=100)
+    ax_freq = fig_freq.add_subplot()
+    ax_freq.set_title('Real frequency difference',
+                      fontsize=12, fontproperties=font_times)
+    ax_freq.set_xlabel('time - us', fontsize=10, fontproperties=font_times)
+    ax_freq.set_ylabel('Freq - MHz', fontsize=10, fontproperties=font_times)
+    ax_freq.plot(t_axis[1:] / us, real_freq_diff / MHz, label='real freq difference')
+    plt.legend(fontsize=8)
+    plt.savefig('real_freq_difference.pdf')
+
+    return phase_error_ideal, phase_error_delay
 
 
-def create_real_signal(cfg):
+def phase_estimation_module(cfg, s_i, s_q, ideal_phase_unwrap, ideal_freq_unwrap, phase_error_ideal):
+    """ phase estimator, phase unwrapping, relative phase """
     fs = cfg['fs']
     ts = 1 / fs
-    B = cfg['B']
     PRI = cfg['PRI']
-    alpha = B / PRI
-    phi0 = cfg['phi0']
     N = int(fs * PRI)
     t_axis = np.arange(N) * ts
     ctrl = cfg['ctrl']
-    tau = cfg['tau']
+    case = cfg['case']
 
-    phase_error = create_phase_error(cfg)
-
-    """ real phase """
-    if ctrl == 'positive':
-        ideal_phase_delay = 2 * np.pi * (alpha * ((t_axis - tau) ** 2) / 2)  # up sweep --> Nyquist sampling
-    elif ctrl == 'negative':
-        ideal_phase_delay = 2 * np.pi * (B * (t_axis - tau) - alpha * ((t_axis - tau) ** 2) / 2)
-        # down sweep --> Nyquist sampling
-    real_phase = ideal_phase_delay + phase_error - phi0
-
-    """ ideal IQ demodulation and LPF """
-    s = np.exp(1j * real_phase)
-
-    s_i = np.real(s)
-    s_q = np.imag(s)
-    return s_i, s_q
-
-
-def phase_estimation_module(s_i, s_q):
-    """ phase estimator """
+    """ Phase estimator """
     # s_complex = s_I + 1j * s_Q
     # practical_phase_python = np.angle(s_complex)
-    practical_phase = PhaseModule.PhaseModule.phase_estimator(s_i, s_q)
+    real_phase_est = PhaseModule.PhaseModule.phase_estimator(s_i, s_q)
     # print(practical_phase_python - practical_phase)
 
     """ phase unwrapping """
-    practical_phase_unwrap = PhaseModule.PhaseModule.phase_unwrapping(practical_phase)
+    real_phase_est_unwrap = PhaseModule.PhaseModule.phase_unwrapping(real_phase_est)
 
-    """ relative phase """
-    relative_practical_phase_unwrap = practical_phase_unwrap - practical_phase_unwrap[0]
-
-    return relative_practical_phase_unwrap
-
-
-if __name__ == '__main__':
-    import matplotlib.pyplot as plt
-
-    Config = {
-        'fs': 100 * MHz,
-        'B': 400 * MHz,
-        'PRI': 10.24 * us,
-        'phi0': np.pi/2,
-        'ctrl': 'positive',
-        'tau': 0 * ns,
-        'f_error': [15, 7.5, 5],  # MHz
-        'amp_error': [0.5, 0.8, 1],
-    }
-
-    """ Parameter setting """
-
-    fs = Config['fs']
-    ts = 1 / fs
-    B = Config['B']
-    PRI = Config['PRI']
-    alpha = B / PRI
-    phi0 = Config['phi0']
-    N = int(fs * PRI)
-    t_axis = np.arange(N) * ts
-    ctrl = Config['ctrl']
-    tau = Config['tau']
-    case = 'Ideal-case'
-
-    ideal_phase, ideal_freq, ideal_phase_unwrap, ideal_freq_unwrap = create_ideal_phase(Config)
-
-    phase_error = create_phase_error(Config)
-
-    """ non-linearity phase error """
-    phase_error_relative = phase_error - phase_error[0] # relative phase step
-    phase_error_relative_wrap = PhaseModule.PhaseModule.phase_wrapping(phase_error_relative)
-
-    """ real phase """
-    s_i, s_q = create_real_signal(Config)
-
-    ########################################
-    """ Method 1 """
-    practical_relative_phase_unwrap = phase_estimation_module(s_i, s_q)
-
-    phase_error_est1 = practical_relative_phase_unwrap - ideal_phase_unwrap
-    phase_error_est1_wrap = PhaseModule.PhaseModule.phase_wrapping(phase_error_est1)
-
-    """ Figure """
-    """ real Phase """
     fig_phase = plt.figure(figsize=(7, 5), dpi=100)
     ax_phase = fig_phase.add_subplot()
     ax_phase.set_title('Unwrapping estimated phase of PLL',
@@ -199,50 +151,148 @@ if __name__ == '__main__':
     ax_phase.set_xlabel('time - us', fontsize=10, fontproperties=font_times)
     ax_phase.set_ylabel('Unwrapping Phase', fontsize=10, fontproperties=font_times)
     ax_phase.plot(t_axis / us, ideal_phase_unwrap, label='ideal phase - sub-Nyquist sampling')
-    ax_phase.plot(t_axis / us, practical_relative_phase_unwrap, label='unwrapping estimated phase')
+    ax_phase.plot(t_axis / us, real_phase_est_unwrap, label='unwrapping estimated phase')
     plt.legend(fontsize=8)
-    plt.savefig(ctrl + '_' + case + '_unwrap_PLL_phase.pdf')
+    plt.savefig(ctrl + '_' + case + '_unwrap_est_phase.pdf')
 
-    """ Phase error """
+    # freq
+    real_freq_est_unwrap = (real_phase_est_unwrap[1:] - real_phase_est_unwrap[0:-1]) / ts / 2 / np.pi  # sub-Nyquist sampling
+
+    fig_freq = plt.figure(figsize=(7, 5), dpi=100)
+    ax_freq = fig_freq.add_subplot()
+    ax_freq.set_title('Sweeping Frequency of PLL after IQ Demodulation - ' + ctrl + ' chirp',
+                      fontsize=12, fontproperties=font_times)
+    ax_freq.set_xlabel('time - us', fontsize=10, fontproperties=font_times)
+    ax_freq.set_ylabel('Freq', fontsize=10, fontproperties=font_times)
+    ax_freq.plot(t_axis[1:] / us, ideal_freq_unwrap / MHz, label='ideal freq')
+    ax_freq.plot(t_axis[1:] / us, real_freq_est_unwrap / MHz, label='real freq')
+    plt.legend(fontsize=8)
+    plt.savefig(ctrl + '_' + case + '_unwrap_est_freq.pdf')
+
+    """ phase de-ramping"""
+    phase_error_est = real_phase_est_unwrap - ideal_phase_unwrap
+
+    """ relative phase """
+    relative_phase_error_est = phase_error_est - phase_error_est[0]
+
+    relative_phase_error= phase_error_ideal - phase_error_ideal[0]
+
     fig_phase = plt.figure(figsize=(7, 5), dpi=100)
     ax_phase = fig_phase.add_subplot()
     ax_phase.set_title('Relative Phase Error Estimation',
                        fontsize=12, fontproperties=font_times)
     ax_phase.set_xlabel('time - us', fontsize=8, fontproperties=font_times)
     ax_phase.set_ylabel('Phase - [-pi, pi]', fontsize=8, fontproperties=font_times)
-    ax_phase.plot(t_axis / us, phase_error_relative, linewidth=2,
+    ax_phase.plot(t_axis / us, relative_phase_error, linewidth=2,
                   label='relative phase error')
-    ax_phase.plot(t_axis / us, phase_error_est1, '--', linewidth=1,
+    ax_phase.plot(t_axis / us, relative_phase_error_est, '--', linewidth=1,
                   label='estimated relative phase error')
     plt.legend(fontsize=8)
     plt.savefig(ctrl + '_' + case + '_unwrap_Rela_Phase_error_est.pdf')
 
-    """ wrap Phase error """
-    fig_phase = plt.figure(figsize=(7, 5), dpi=100)
-    ax_phase = fig_phase.add_subplot()
-    ax_phase.set_title('Wrapping Relative Phase Error Estimation',
-                       fontsize=12, fontproperties=font_times)
-    ax_phase.set_xlabel('time - us', fontsize=8, fontproperties=font_times)
-    ax_phase.set_ylabel('Phase - [-pi, pi]', fontsize=8, fontproperties=font_times)
-    ax_phase.plot(t_axis / us, phase_error_relative_wrap, linewidth=2,
-                  label='relative phase error')
-    ax_phase.plot(t_axis / us, phase_error_est1_wrap, '--', linewidth=1,
-                  label='estimated relative phase error')
-    plt.legend(fontsize=8)
-    plt.savefig(ctrl + '_' + case + '_Rela_Phase_error_est.pdf')
+    """ phase wrapping """
+    relative_phase_error_est_wrap = PhaseModule.PhaseModule.phase_wrapping(relative_phase_error_est)
 
-    zoom = [0, 256]
+    relative_phase_error_wrap = PhaseModule.PhaseModule.phase_wrapping(relative_phase_error)
+
     fig_phase = plt.figure(figsize=(7, 5), dpi=100)
     ax_phase = fig_phase.add_subplot()
     ax_phase.set_title('Wrapping Relative Phase Error Estimation',
                        fontsize=12, fontproperties=font_times)
     ax_phase.set_xlabel('time - us', fontsize=8, fontproperties=font_times)
     ax_phase.set_ylabel('Phase - [-pi, pi]', fontsize=8, fontproperties=font_times)
-    ax_phase.plot(t_axis[zoom[0]:zoom[1]] / us, phase_error_relative_wrap[zoom[0]:zoom[1]], linewidth=2,
+    ax_phase.plot(t_axis / us, relative_phase_error_wrap, linewidth=2,
                   label='relative phase error')
-    ax_phase.plot(t_axis[zoom[0]:zoom[1]] / us, phase_error_est1_wrap[zoom[0]:zoom[1]], '--', linewidth=1,
+    ax_phase.plot(t_axis / us, relative_phase_error_est_wrap, '--', linewidth=1,
                   label='estimated relative phase error')
     plt.legend(fontsize=8)
-    plt.savefig(ctrl + '_' + case + '_Rela_Phase_error_est_zoom.pdf')
+    plt.savefig(ctrl + '_' + case + '_wrap_Rela_Phase_error_est.pdf')
+
+    return relative_phase_error_wrap, relative_phase_error_est_wrap
+
+
+def compensation_chirp_tau(cfg, relative_phase_error_wrap, relative_phase_error_est_wrap):
+    fs = cfg['fs']
+    ts = 1 / fs
+    B = cfg['B']
+    PRI = cfg['PRI']
+    alpha = B / PRI
+    N = int(fs * PRI)
+    t_axis = np.arange(N) * ts
+    ctrl = cfg['ctrl']
+    tau = cfg['tau']
+    case = cfg['case']
+
+    phi_comp = 2 * np.pi * alpha * ts * tau * np.arange(N) - np.pi * alpha * tau ** 2
+
+    relative_phase_error_est_wrap_comp = PhaseModule.PhaseModule.phase_wrapping(relative_phase_error_est_wrap +
+                                                                                phi_comp -
+                                                                                relative_phase_error_est_wrap[1] -
+                                                                                phi_comp[1])
+
+    fig_phase = plt.figure(figsize=(7, 5), dpi=100)
+    ax_phase = fig_phase.add_subplot()
+    ax_phase.set_title('Wrapping Relative Phase Error Estimation after compensation',
+                       fontsize=12, fontproperties=font_times)
+    ax_phase.set_xlabel('time - us', fontsize=8, fontproperties=font_times)
+    ax_phase.set_ylabel('Phase - [-pi, pi]', fontsize=8, fontproperties=font_times)
+    ax_phase.plot(t_axis / us, relative_phase_error_wrap, linewidth=2,
+                  label='relative phase error')
+    ax_phase.plot(t_axis[0:-1] / us, relative_phase_error_est_wrap_comp[1:], '--', linewidth=1,
+                  label='estimated relative phase error after compensation')
+    plt.legend(fontsize=8)
+    plt.savefig(ctrl + '_' + case + '_comp_wrap_Rela_Phase_error_est.pdf')
+
+    return phi_comp, relative_phase_error_est_wrap_comp
+
+
+# def compensation_phase_error_delay(cfg, relative_phase_error_est_wrap_comp):
+#     FilterModule.digital_filter(num, den, relative_phase_error_est_wrap_comp)
+
+
+if __name__ == '__main__':
+    import matplotlib.pyplot as plt
+
+    """ =================================================================================================== """
+    Config = {
+            'case': 'no_delay',
+            'fs': 100 * MHz,
+            'B': 400 * MHz,
+            'PRI': 10.24 * us,
+            'phi0': np.pi / 2,
+            'ctrl': 'positive',
+            'tau': 10 * ns,
+            'f_error': [15, 7.5, 5],  # MHz
+            'amp_error': [1, 0.8, 1],
+    }
+
+    """ =================================================================================================== """
+    """ ideal_phase, including Nyquist and sub-Nyquist sampling """
+    ideal_phase, ideal_freq, ideal_phase_unwrap, ideal_freq_unwrap, ideal_phase_delay = create_pll_phase(Config)
+
+    """ phase error """
+    phase_error_ideal, phase_error_delay = create_phase_error(Config)
+    phase_error_ideal_relative = phase_error_ideal - phase_error_ideal[0]  # relative phase step
+    phase_error_ideal_relative_wrap = PhaseModule.PhaseModule.phase_wrapping(phase_error_ideal_relative)
+
+    """ create IQ demodulation and LPF """
+    real_phase = ideal_phase_delay + phase_error_delay
+    s = np.exp(1j * real_phase)
+    s_i = np.real(s)
+    s_q = np.imag(s)
+
+    """ =================================================================================================== """
+    """ Phase error estimation """
+    relative_phase_error_wrap, relative_phase_error_est_wrap = phase_estimation_module(Config, s_i, s_q,
+                                                                                       ideal_phase_unwrap,
+                                                                                       ideal_freq_unwrap,
+                                                                                       phase_error_ideal)
+
+    """ Compensation for delay in chirp """
+    phi_comp, relative_phase_error_est_wrap_comp = compensation_chirp_tau(Config,
+                                                                          relative_phase_error_wrap,
+                                                                          relative_phase_error_est_wrap)
+
+    """ Compensation for delay in phase error"""
 
     plt.show()
