@@ -29,11 +29,13 @@ def create_pll_phase(cfg):
 
     """ Ideal phase """
     if ctrl == 'positive':
-        ideal_phase = 2 * np.pi * (alpha * (t_axis ** 2) / 2)  # up sweep --> Nyquist sampling
-        phase_delay = 2 * np.pi * (alpha * ((t_axis - tau) ** 2) / 2)  # up sweep --> Nyquist sampling
+        ideal_phase = 2 * np.pi * ((alpha * (t_axis ** 2) / 2) - B / 2 * t_axis)
+        # up sweep --> Nyquist sampling
+        phase_delay = 2 * np.pi * ((alpha * ((t_axis - tau) ** 2) / 2) - B / 2 * (t_axis - tau))
+        # up sweep --> Nyquist sampling
     else:
-        ideal_phase = 2 * np.pi * (B * t_axis - alpha * (t_axis ** 2) / 2)  # down sweep --> Nyquist sampling
-        phase_delay = 2 * np.pi * (B * (t_axis - tau) - alpha * ((t_axis - tau) ** 2) / 2)
+        ideal_phase = 2 * np.pi * (B/2 * t_axis - alpha * (t_axis ** 2) / 2)  # down sweep --> Nyquist sampling
+        phase_delay = 2 * np.pi * (B/2 * (t_axis - tau) - alpha * ((t_axis - tau) ** 2) / 2)
 
     ideal_freq = (ideal_phase[1:] - ideal_phase[0:-1]) / ts / 2 / np.pi  # freq --> Nyquist sampling
 
@@ -58,8 +60,8 @@ def create_pll_phase(cfg):
                        fontsize=12, fontproperties=font_times)
     ax_phase.set_xlabel('time - us', fontsize=10, fontproperties=font_times)
     ax_phase.set_ylabel('Unwrapping Phase - rad.', fontsize=10, fontproperties=font_times)
-    ax_phase.plot(t_axis / us, ideal_phase, label='ideal phase - Nyquist')
-    ax_phase.plot(t_axis / us, ideal_phase_unwrap, label='ideal phase - sub-Nyquist sampling')
+    ax_phase.plot(t_axis / us, ideal_phase, 'k', label='ideal phase - Nyquist')
+    ax_phase.plot(t_axis / us, ideal_phase_unwrap, 'b', label='ideal phase - sub-Nyquist sampling')
     plt.legend(fontsize=8)
     plt.savefig(ctrl + '_ideal_sweeping_phase.pdf')
 
@@ -70,8 +72,8 @@ def create_pll_phase(cfg):
                       fontsize=12, fontproperties=font_times)
     ax_freq.set_xlabel('time - us', fontsize=10, fontproperties=font_times)
     ax_freq.set_ylabel('Freq - MHz', fontsize=10, fontproperties=font_times)
-    ax_freq.plot(t_axis[1:] / us, ideal_freq / MHz, label='ideal freq - Nyquist')
-    ax_freq.plot(t_axis[1:] / us, ideal_freq_unwrap / MHz, label='ideal freq - sub-Nyquist sampling')
+    ax_freq.plot(t_axis[1:] / us, ideal_freq / MHz, 'k', label='ideal freq - Nyquist')
+    ax_freq.plot(t_axis[1:] / us, ideal_freq_unwrap / MHz, 'b', label='ideal freq - sub-Nyquist sampling')
     plt.legend(fontsize=8)
     plt.savefig(ctrl + '_ideal_sweeping_Freq.pdf')
     return ideal_phase, ideal_freq, ideal_phase_unwrap, ideal_freq_unwrap, phase_delay
@@ -150,8 +152,8 @@ def phase_estimation_module(cfg, s_i, s_q, ideal_phase_unwrap, ideal_freq_unwrap
                        fontsize=12, fontproperties=font_times)
     ax_phase.set_xlabel('time - us', fontsize=10, fontproperties=font_times)
     ax_phase.set_ylabel('Unwrapping Phase', fontsize=10, fontproperties=font_times)
-    ax_phase.plot(t_axis / us, ideal_phase_unwrap, label='ideal phase - sub-Nyquist sampling')
-    ax_phase.plot(t_axis / us, real_phase_est_unwrap, label='unwrapping estimated phase')
+    ax_phase.plot(t_axis / us, ideal_phase_unwrap, 'b', label='ideal phase - sub-Nyquist sampling')
+    ax_phase.plot(t_axis / us, real_phase_est_unwrap, 'orange', label='unwrapping estimated phase')
     plt.legend(fontsize=8)
     plt.savefig(ctrl + '_' + case + '_unwrap_est_phase.pdf')
 
@@ -160,12 +162,13 @@ def phase_estimation_module(cfg, s_i, s_q, ideal_phase_unwrap, ideal_freq_unwrap
 
     fig_freq = plt.figure(figsize=(7, 5), dpi=100)
     ax_freq = fig_freq.add_subplot()
-    ax_freq.set_title('Sweeping Frequency of PLL after IQ Demodulation - ' + ctrl + ' chirp',
+    ax_freq.set_title('Estimated Frequency with unwrapping estimated phase of PLL - ' + ctrl + ' chirp',
                       fontsize=12, fontproperties=font_times)
     ax_freq.set_xlabel('time - us', fontsize=10, fontproperties=font_times)
     ax_freq.set_ylabel('Freq', fontsize=10, fontproperties=font_times)
-    ax_freq.plot(t_axis[1:] / us, ideal_freq_unwrap / MHz, label='ideal freq')
-    ax_freq.plot(t_axis[1:] / us, real_freq_est_unwrap / MHz, label='real freq')
+    ax_freq.plot(t_axis[1:] / us, real_freq_est_unwrap / MHz, 'orange', label='real freq')
+    ax_freq.plot(t_axis[1:] / us, ideal_freq_unwrap / MHz, 'b', label='ideal freq')
+
     plt.legend(fontsize=8)
     plt.savefig(ctrl + '_' + case + '_unwrap_est_freq.pdf')
 
@@ -175,7 +178,7 @@ def phase_estimation_module(cfg, s_i, s_q, ideal_phase_unwrap, ideal_freq_unwrap
     """ relative phase """
     relative_phase_error_est = phase_error_est - phase_error_est[0]
 
-    relative_phase_error= phase_error_ideal - phase_error_ideal[0]
+    relative_phase_error = phase_error_ideal - phase_error_ideal[0]
 
     fig_phase = plt.figure(figsize=(7, 5), dpi=100)
     ax_phase = fig_phase.add_subplot()
@@ -183,9 +186,9 @@ def phase_estimation_module(cfg, s_i, s_q, ideal_phase_unwrap, ideal_freq_unwrap
                        fontsize=12, fontproperties=font_times)
     ax_phase.set_xlabel('time - us', fontsize=8, fontproperties=font_times)
     ax_phase.set_ylabel('Phase - [-pi, pi]', fontsize=8, fontproperties=font_times)
-    ax_phase.plot(t_axis / us, relative_phase_error, linewidth=2,
+    ax_phase.plot(t_axis / us, relative_phase_error, 'b', linewidth=2,
                   label='relative phase error')
-    ax_phase.plot(t_axis / us, relative_phase_error_est, '--', linewidth=1,
+    ax_phase.plot(t_axis / us, relative_phase_error_est, color='orange', linestyle='--', linewidth=1,
                   label='estimated relative phase error')
     plt.legend(fontsize=8)
     plt.savefig(ctrl + '_' + case + '_unwrap_Rela_Phase_error_est.pdf')
@@ -201,14 +204,14 @@ def phase_estimation_module(cfg, s_i, s_q, ideal_phase_unwrap, ideal_freq_unwrap
                        fontsize=12, fontproperties=font_times)
     ax_phase.set_xlabel('time - us', fontsize=8, fontproperties=font_times)
     ax_phase.set_ylabel('Phase - [-pi, pi]', fontsize=8, fontproperties=font_times)
-    ax_phase.plot(t_axis / us, relative_phase_error_wrap, linewidth=2,
+    ax_phase.plot(t_axis / us, relative_phase_error_wrap, 'b', linewidth=2,
                   label='relative phase error')
-    ax_phase.plot(t_axis / us, relative_phase_error_est_wrap, '--', linewidth=1,
+    ax_phase.plot(t_axis / us, relative_phase_error_est_wrap, color='orange', linestyle='--', linewidth=1,
                   label='estimated relative phase error')
     plt.legend(fontsize=8)
     plt.savefig(ctrl + '_' + case + '_wrap_Rela_Phase_error_est.pdf')
 
-    return relative_phase_error_wrap, relative_phase_error_est_wrap
+    return real_phase_est_unwrap, real_freq_est_unwrap, relative_phase_error_wrap, relative_phase_error_est_wrap
 
 
 def compensation_chirp_tau(cfg, relative_phase_error_wrap, relative_phase_error_est_wrap):
@@ -261,10 +264,16 @@ if __name__ == '__main__':
             'PRI': 10.24 * us,
             'phi0': np.pi / 2,
             'ctrl': 'positive',
-            'tau': 10 * ns,
+            'tau': 0 * ns,
             'f_error': [15, 7.5, 5],  # MHz
             'amp_error': [1, 0.8, 1],
     }
+    ctrl = Config['ctrl']
+    fs = Config['fs']
+    ts = 1 / fs
+    PRI = Config['PRI']
+    N = int(fs * PRI)
+    t_axis = np.arange(N) * ts
 
     """ =================================================================================================== """
     """ ideal_phase, including Nyquist and sub-Nyquist sampling """
@@ -283,16 +292,83 @@ if __name__ == '__main__':
 
     """ =================================================================================================== """
     """ Phase error estimation """
-    relative_phase_error_wrap, relative_phase_error_est_wrap = phase_estimation_module(Config, s_i, s_q,
-                                                                                       ideal_phase_unwrap,
-                                                                                       ideal_freq_unwrap,
-                                                                                       phase_error_ideal)
+    real_phase_est_unwrap, real_freq_est_unwrap, relative_phase_error_wrap, relative_phase_error_est_wrap \
+        = phase_estimation_module(Config, s_i, s_q, ideal_phase_unwrap, ideal_freq_unwrap, phase_error_ideal)
 
     """ Compensation for delay in chirp """
     phi_comp, relative_phase_error_est_wrap_comp = compensation_chirp_tau(Config,
                                                                           relative_phase_error_wrap,
                                                                           relative_phase_error_est_wrap)
 
-    """ Compensation for delay in phase error"""
+    """ =================================================================================================== """
+    """ Figure """
+    fig_spec = plt.figure(figsize=(36, 12), dpi=50)
+    plt.subplots_adjust(left=0.03, bottom=0.05, right=0.99, top=0.95, wspace=0.25, hspace=0.25)
+    num_col = 3
+    num_row = 2
+    ax_spec = fig_spec.add_subplot(num_row, num_col, 1)
+    ax_spec.set_title('Ideal Phase of PLL after IQ Demodulation - ' + ctrl + ' chirp',
+                      fontsize=12, fontproperties=font_times)
+    ax_spec.set_xlabel('time - us', fontsize=10, fontproperties=font_times)
+    ax_spec.set_ylabel('Unwrapping Phase - rad.', fontsize=10, fontproperties=font_times)
+    ax_spec.plot(t_axis / us, ideal_phase, 'k', label='ideal phase')
+    ax_spec.plot(t_axis / us, ideal_phase_unwrap, 'b', label='unwrapped ideal phase')
+    plt.legend(fontsize=8)
+
+    ax_spec = fig_spec.add_subplot(num_row, num_col, 4)
+    ax_spec.set_title('Sweeping Frequency of PLL after IQ Demodulation - ' + ctrl + ' chirp',
+                      fontsize=12, fontproperties=font_times)
+    ax_spec.set_xlabel('time - us', fontsize=10, fontproperties=font_times)
+    ax_spec.set_ylabel('Freq - MHz', fontsize=10, fontproperties=font_times)
+    ax_spec.plot(t_axis[1:] / us, ideal_freq / MHz, 'k', label='ideal freq')
+    ax_spec.plot(t_axis[1:] / us, ideal_freq_unwrap / MHz, 'b', label='ideal alias freq')
+    plt.legend(fontsize=8)
+
+    ax_spec = fig_spec.add_subplot(num_row, num_col, 2)
+    ax_spec.set_title('Unwrapping estimated phase of PLL',
+                      fontsize=12, fontproperties=font_times)
+    ax_spec.set_xlabel('time - us', fontsize=10, fontproperties=font_times)
+    ax_spec.set_ylabel('Unwrapping Phase', fontsize=10, fontproperties=font_times)
+    ax_spec.plot(t_axis / us, ideal_phase_unwrap, 'b', label='unwrapped ideal phase')
+    ax_spec.plot(t_axis / us, real_phase_est_unwrap, 'orange', label='unwrapping estimated phase')
+    plt.legend(fontsize=8)
+
+    ax_spec = fig_spec.add_subplot(num_row, num_col, 5)
+    ax_spec.set_title('Estimated Frequency with unwrapping estimated phase of PLL - ' + ctrl + ' chirp',
+                      fontsize=12, fontproperties=font_times)
+    ax_spec.set_xlabel('time - us', fontsize=10, fontproperties=font_times)
+    ax_spec.set_ylabel('Freq', fontsize=10, fontproperties=font_times)
+    ax_spec.plot(t_axis[1:] / us, real_freq_est_unwrap / MHz, 'orange', label='real freq')
+    ax_spec.plot(t_axis[1:] / us, ideal_freq_unwrap / MHz, 'b', label='ideal alias freq')
+    plt.legend(fontsize=8)
+
+    relative_phase_error = phase_error_ideal - phase_error_ideal[0]
+
+    phase_error_est = real_phase_est_unwrap - ideal_phase_unwrap
+    relative_phase_error_est = phase_error_est - phase_error_est[0]
+
+    ax_spec = fig_spec.add_subplot(num_row, num_col, 3)
+    ax_spec.set_title('Relative Phase Error Estimation',
+                      fontsize=12, fontproperties=font_times)
+    ax_spec.set_xlabel('time - us', fontsize=8, fontproperties=font_times)
+    ax_spec.set_ylabel('Phase - [-pi, pi]', fontsize=8, fontproperties=font_times)
+    ax_spec.plot(t_axis / us, relative_phase_error, 'b', linewidth=2,
+                 label='relative phase error')
+    ax_spec.plot(t_axis / us, relative_phase_error_est, color='orange', linestyle='--', linewidth=1,
+                 label='estimated relative phase error')
+    plt.legend(fontsize=8)
+
+    ax_spec = fig_spec.add_subplot(num_row, num_col, 6)
+    ax_spec.set_title('Wrapping Relative Phase Error Estimation',
+                      fontsize=12, fontproperties=font_times)
+    ax_spec.set_xlabel('time - us', fontsize=8, fontproperties=font_times)
+    ax_spec.set_ylabel('Phase - [-pi, pi]', fontsize=8, fontproperties=font_times)
+    ax_spec.plot(t_axis / us, relative_phase_error_wrap, 'b', linewidth=2,
+                 label='relative phase error')
+    ax_spec.plot(t_axis / us, relative_phase_error_est_wrap, color='orange', linestyle='--', linewidth=1,
+                 label='estimated relative phase error')
+    plt.legend(fontsize=8)
+
+    plt.savefig('Phase_estimation_center_chirp_'+ctrl+'.pdf')
 
     plt.show()

@@ -7,8 +7,11 @@ font_times = fm.FontProperties(family='Times New Roman', stretch=0)
 current_path = os.path.dirname(__file__)
 sys.path.append(os.path.join(current_path, '..', '..', 'src', 'IQModulation'))
 sys.path.append(os.path.join(current_path, '..', '..', 'src', 'FilterDesign'))
+sys.path.append(os.path.join(current_path, '..', '..', 'src', 'PhaseModule'))
 import IQModulation
 import FilterModule
+import PhaseModule
+
 
 C = 3e8
 GHz = 1e9
@@ -152,6 +155,17 @@ if __name__ == '__main__':
     specturm_numpy[7] = np.fft.fftshift(Y_filter_dB)
 
     plot_spectrum_mult(f_axis_shift, specturm_numpy, save_name)
+
+    real_phase_est = PhaseModule.PhaseModule.phase_estimator(y_I_filter, y_Q_filter)
+    real_phase_est_unwrap = PhaseModule.PhaseModule.phase_unwrapping(real_phase_est)
+    fig_phase = plt.figure(figsize=(7, 5), dpi=100)
+    ax_phase = fig_phase.add_subplot()
+    ax_phase.set_title('Unwrapping estimated phase of PLL',
+                       fontsize=12, fontproperties=font_times)
+    ax_phase.set_xlabel('time - us', fontsize=10, fontproperties=font_times)
+    ax_phase.set_ylabel('Unwrapping Phase', fontsize=10, fontproperties=font_times)
+    ax_phase.plot(t_axis / us, real_phase_est_unwrap, label='unwrapping estimated phase')
+    plt.legend(fontsize=8)
 
     plt.show()
     # plot_spectrum(f_axis_shift, np.fft.fftshift(S_r_f_dB), 'real - 20-30 MHz (fs = 100 MHz)', 'Spectrum')

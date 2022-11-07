@@ -18,14 +18,20 @@ class PhaseModule:
 
     @staticmethod
     def phase_wrapping_single_point(ang):
-        if (ang >= np.pi) or (ang <= -np.pi):
-            mul = int((abs(ang) - np.pi) / 2 / np.pi) + 1
-            if ang > 0:
-                ang = ang - mul * 2 * np.pi
-            elif ang < 0:
-                ang = ang + mul * 2 * np.pi
+        while abs(ang) > np.pi:
+            if ang > np.pi:
+                ang = ang - 2 * np.pi
+            elif ang < -np.pi:
+                ang = ang + 2 * np.pi
 
         return ang
+
+    # if abs(ang) > np.pi:
+    #     mul = int((abs(ang) - np.pi) / 2 / np.pi) + 1
+    #     if ang > 0:
+    #         ang = ang - mul * 2 * np.pi
+    #     elif ang < 0:
+    #         ang = ang + mul * 2 * np.pi
 
     @staticmethod
     def phase_unwrapping(ang_np):
@@ -53,7 +59,6 @@ class PhaseModule:
 
     @staticmethod
     def phase_estimator_single_point(i, q):
-        # assert i != 0 or q != 0
         if i == 0:
             if q > 0:
                 ang = np.pi / 2
@@ -114,4 +119,9 @@ if __name__ == '__main__':
     print(np.angle(x))
     print(PhaseModule.phase_estimator_single_point(I, Q))
 
+    print(PhaseModule.phase_wrapping_single_point(3 * np.pi))
+    print(PhaseModule.phase_wrapping_single_point(np.pi + 0.1))
     print(PhaseModule.phase_wrapping_single_point(-2 * np.pi + 0.1))
+    print(PhaseModule.phase_wrapping_single_point(-2 * np.pi - 0.1))
+    print(PhaseModule.phase_wrapping_single_point(-3 * np.pi))
+    print(np.fix([-3.5, 3.5]))
