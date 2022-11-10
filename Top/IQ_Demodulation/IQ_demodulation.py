@@ -10,7 +10,6 @@ sys.path.append(os.path.join(current_path, '..', '..', 'src', 'FilterDesign'))
 sys.path.append(os.path.join(current_path, '..', '..', 'src', 'PhaseModule'))
 import IQModulation
 import FilterModule
-import PhaseModule
 
 
 C = 3e8
@@ -42,16 +41,15 @@ def plot_spectrum(freq_axis, spectrum, s_label, title):
 
 
 def plot_spectrum_sub(ax_sub, freq_sub, spectrum_sub, title):
-    ax_sub.set_title(title, fontsize=14, fontproperties=font_times)
-    ax_sub.set_xlabel('Freq - MHz', fontsize=12, fontproperties=font_times)
-    ax_sub.set_ylabel('Magnitude - dB', fontsize=12, fontproperties=font_times)
+    ax_sub.set_title(title, fontsize=22, fontproperties=font_times)
+    ax_sub.set_xlabel('Freq - MHz', fontsize=18, fontproperties=font_times)
+    ax_sub.set_ylabel('Magnitude - dB', fontsize=18, fontproperties=font_times)
     ax_sub.plot(freq_sub / MHz, spectrum_sub)
-    plt.tick_params(labelsize=12)
+    plt.tick_params(labelsize=18)
     labels = ax_sub.get_xticklabels() + ax_sub.get_yticklabels()
     [label.set_fontname('Times New Roman') for label in labels]
     plt.ylim(0, 51)
     plt.grid()
-    # plt.legend(fontsize=8, loc='lower right')
 
 
 def plot_spectrum_mult(freq_axis, spectrum_np, save_name):
@@ -65,9 +63,9 @@ def plot_spectrum_mult(freq_axis, spectrum_np, save_name):
         spectrum = spectrum_np[k]
         ax_spec = fig_spec.add_subplot(num_row, num_col, k+1)
         plt.subplots_adjust(left=0.03, bottom=0.05, right=0.99, top=0.95, wspace=0.25, hspace=0.25)
-        plot_spectrum_sub(ax_spec, freq_axis, spectrum, title_list[k])
+        plot_spectrum_sub(ax_spec, freq_axis, spectrum, 'Fig.'+str(k+1)+ ' - '+ title_list[k])
         if k == 4:
-            plt.ylim(-60, 0)
+            plt.ylim(-70, 1)
         else:
             plt.ylim(0, 51)
 
@@ -78,118 +76,182 @@ if __name__ == '__main__':
     import matplotlib.pyplot as plt
 
     """======================================================================="""
+    """ ============================= Case 1 ================================="""
+    """======================================================================="""
     """ input signal """
-    fs = 200 * MHz
-    ts = 1 / fs
+    FS = 200 * MHz
+    TS = 1 / FS
 
     B = 10 * MHz
-    fc = 30 * MHz
-    LO_fc = 35 * MHz
+    FC = 30 * MHz
+    LO_FC = 30 * MHz
     PRI = 10.24 * us
-    num_point = int(fs * PRI)
-    t_axis = np.arange(num_point) * ts
-    alpha = B / PRI
-    amp = 2
-    beta = amp / PRI
-    save_name = 'IQ_center_freq'
+    NUM_POINT = int(FS * PRI)
+    T_AXIS = np.arange(NUM_POINT) * TS
+    ALPHA = B / PRI
+    AMP = 2
+    BETA = AMP / PRI
+    SAVE_NAME = 'IQ_begin_freq'
 
-    f_axis = np.arange(num_point) / num_point * fs
-    f_axis_shift = np.arange(-int(num_point/2), int(num_point/2)) / num_point * fs
+    F_AXIS = np.arange(NUM_POINT) / NUM_POINT * FS
+    F_AXIS_SHIFT = np.arange(-int(NUM_POINT/2), int(NUM_POINT/2)) / NUM_POINT * FS
 
     """======================================================================="""
     """ input signal """
-    ideal_fmcw_phase = 2 * np.pi * (fc * t_axis + alpha * (t_axis ** 2) / 2)
-    s = (1 + beta * t_axis) * np.exp(1j * ideal_fmcw_phase)
+    IDEAL_FMCW_PHASE = 2 * np.pi * (FC * T_AXIS + ALPHA * (T_AXIS ** 2) / 2)
+    S = (1 + BETA * T_AXIS) * np.exp(1j * IDEAL_FMCW_PHASE)
 
-    s_r = np.real(s)
-    S_r_f = np.fft.fft(s_r)
-    S_r_f_dB = 20 * np.log10(np.abs(S_r_f))
+    S_R = np.real(S)
+    S_R_F = np.fft.fft(S_R)
+    S_R_F_dB = 20 * np.log10(np.abs(S_R_F))
 
     """======================================================================="""
     """ IQ Demodulation  """
-    y_I, y_Q = IQModulation.IQModule.IQ_demodulator(s_r, LO_fc, fs)
+    Y_I, Y_Q = IQModulation.IQModule.IQ_demodulator(S_R, LO_FC, FS)
 
-    Y_I_f = np.fft.fft(y_I)
-    Y_I_f_dB = 20 * np.log10(np.abs(Y_I_f))
+    Y_I_F = np.fft.fft(Y_I)
+    Y_I_F_dB = 20 * np.log10(np.abs(Y_I_F))
 
-    Y_Q_f = np.fft.fft(y_Q)
-    Y_Q_f_dB = 20 * np.log10(np.abs(Y_Q_f))
+    Y_Q_F = np.fft.fft(Y_Q)
+    Y_Q_F_dB = 20 * np.log10(np.abs(Y_Q_F))
 
-    y = y_I + 1j * y_Q
-    Y_f = np.fft.fft(y)
-    Y_f_dB = 20 * np.log10(np.abs(Y_f))
+    Y = Y_I + 1j * Y_Q
+    Y_F = np.fft.fft(Y)
+    Y_F_dB = 20 * np.log10(np.abs(Y_F))
 
     """======================================================================="""
     """ Filtering """
-    win = hamming(16)
-    b = win
-    a = [16]
+    NUM_FILTER = 127
+    WC = 0.1 * np.pi
+    N_AXIS = np.arange(-int((NUM_FILTER-1)//2), int((NUM_FILTER+1)//2))
+    H = np.sin(WC * N_AXIS) / np.pi / N_AXIS
+    H[int((NUM_FILTER-1)//2)] = WC / np.pi
 
-    freq_response = FilterModule.FilterModule.digital_bode(b, a,
-                                                           np.exp(1j * 2 * np.pi * np.linspace(-0.5, 0.5, num_point)))
-    freq_response_dB = 20 * np.log10(np.abs(freq_response))
-    freq_response_dB = freq_response_dB - np.amax(freq_response_dB)
+    WIN = hamming(NUM_FILTER)
+    H_LPF = H * WIN
+    NUM = H_LPF
+    DEN = [1]
 
-    y_I_filter = FilterModule.FilterModule.digital_filter(b, a, y_I)
-    Y_I_filter = np.fft.fft(y_I_filter)
-    Y_I_filter_dB = 20 * np.log10(np.abs(Y_I_filter))
+    FREQ_RESPONSE = FilterModule.FilterModule.digital_bode(NUM, DEN,
+                                                           np.exp(1j * 2 * np.pi * np.linspace(-0.5, 0.5, NUM_POINT)))
+    FREQ_RESPONSE_dB = 20 * np.log10(np.abs(FREQ_RESPONSE))
+    FREQ_RESPONSE_dB = FREQ_RESPONSE_dB - np.amax(FREQ_RESPONSE_dB)
 
-    y_Q_filter = FilterModule.FilterModule.digital_filter(b, a, y_Q)
-    Y_Q_filter = np.fft.fft(y_Q_filter)
-    Y_Q_filter_dB = 20 * np.log10(np.abs(Y_Q_filter))
+    Y_I_FILTER = FilterModule.FilterModule.digital_filter(NUM, DEN, Y_I)
+    Y_I_FILTER_F = np.fft.fft(Y_I_FILTER)
+    Y_I_FILTER_F_dB = 20 * np.log10(np.abs(Y_I_FILTER_F))
 
-    y_filter = y_I_filter + 1j * y_Q_filter
-    Y_filter = np.fft.fft(y_filter)
-    Y_filter_dB = 20 * np.log10(np.abs(Y_filter))
+    Y_Q_FILTER = FilterModule.FilterModule.digital_filter(NUM, DEN, Y_Q)
+    Y_Q_FILTER_F = np.fft.fft(Y_Q_FILTER)
+    Y_Q_FILTER_F_dB = 20 * np.log10(np.abs(Y_Q_FILTER_F))
+
+    Y_FILTER = Y_I_FILTER + 1j * Y_Q_FILTER
+    Y_FILTER_F = np.fft.fft(Y_FILTER)
+    Y_FILTER_F_dB = 20 * np.log10(np.abs(Y_FILTER_F))
 
     """======================================================================="""
     """ Figure """
-    specturm_numpy = np.zeros((8, num_point), dtype=float)
-    specturm_numpy[0] = np.fft.fftshift(S_r_f_dB)
-    specturm_numpy[1] = np.fft.fftshift(Y_I_f_dB)
-    specturm_numpy[2] = np.fft.fftshift(Y_I_filter_dB)
-    specturm_numpy[3] = np.fft.fftshift(Y_f_dB)
-    specturm_numpy[4] = freq_response_dB
-    specturm_numpy[5] = np.fft.fftshift(Y_Q_f_dB)
-    specturm_numpy[6] = np.fft.fftshift(Y_Q_filter_dB)
-    specturm_numpy[7] = np.fft.fftshift(Y_filter_dB)
+    SPECTRUM_NUMPY = np.zeros((8, NUM_POINT), dtype=float)
+    SPECTRUM_NUMPY[0] = np.fft.fftshift(S_R_F_dB)
+    SPECTRUM_NUMPY[1] = np.fft.fftshift(Y_I_F_dB)
+    SPECTRUM_NUMPY[2] = np.fft.fftshift(Y_I_FILTER_F_dB)
+    SPECTRUM_NUMPY[3] = np.fft.fftshift(Y_F_dB)
+    SPECTRUM_NUMPY[4] = FREQ_RESPONSE_dB
+    SPECTRUM_NUMPY[5] = np.fft.fftshift(Y_Q_F_dB)
+    SPECTRUM_NUMPY[6] = np.fft.fftshift(Y_Q_FILTER_F_dB)
+    SPECTRUM_NUMPY[7] = np.fft.fftshift(Y_FILTER_F_dB)
 
-    plot_spectrum_mult(f_axis_shift, specturm_numpy, save_name)
+    plot_spectrum_mult(F_AXIS_SHIFT, SPECTRUM_NUMPY, SAVE_NAME)
 
-    real_phase_est = PhaseModule.PhaseModule.phase_estimator(y_I_filter, y_Q_filter)
-    real_phase_est_unwrap = PhaseModule.PhaseModule.phase_unwrapping(real_phase_est)
-    fig_phase = plt.figure(figsize=(7, 5), dpi=100)
-    ax_phase = fig_phase.add_subplot()
-    ax_phase.set_title('Unwrapping estimated phase of PLL',
-                       fontsize=12, fontproperties=font_times)
-    ax_phase.set_xlabel('time - us', fontsize=10, fontproperties=font_times)
-    ax_phase.set_ylabel('Unwrapping Phase', fontsize=10, fontproperties=font_times)
-    ax_phase.plot(t_axis / us, real_phase_est_unwrap, label='unwrapping estimated phase')
-    plt.legend(fontsize=8)
+    """======================================================================="""
+    """ ============================= Case 2 ================================="""
+    """======================================================================="""
+    """ input signal """
+    FS = 200 * MHz
+    TS = 1 / FS
+
+    B = 10 * MHz
+    FC = 30 * MHz
+    LO_FC = 35 * MHz
+    PRI = 10.24 * us
+    NUM_POINT = int(FS * PRI)
+    T_AXIS = np.arange(NUM_POINT) * TS
+    ALPHA = B / PRI
+    AMP = 2
+    BETA = AMP / PRI
+    SAVE_NAME = 'IQ_center_freq'
+
+    F_AXIS = np.arange(NUM_POINT) / NUM_POINT * FS
+    F_AXIS_SHIFT = np.arange(-int(NUM_POINT / 2), int(NUM_POINT / 2)) / NUM_POINT * FS
+
+    """======================================================================="""
+    """ input signal """
+    IDEAL_FMCW_PHASE = 2 * np.pi * (FC * T_AXIS + ALPHA * (T_AXIS ** 2) / 2)
+    S = (1 + BETA * T_AXIS) * np.exp(1j * IDEAL_FMCW_PHASE)
+
+    S_R = np.real(S)
+    S_R_F = np.fft.fft(S_R)
+    S_R_F_dB = 20 * np.log10(np.abs(S_R_F))
+
+    """======================================================================="""
+    """ IQ Demodulation  """
+    Y_I, Y_Q = IQModulation.IQModule.IQ_demodulator(S_R, LO_FC, FS)
+
+    Y_I_F = np.fft.fft(Y_I)
+    Y_I_F_dB = 20 * np.log10(np.abs(Y_I_F))
+
+    Y_Q_F = np.fft.fft(Y_Q)
+    Y_Q_F_dB = 20 * np.log10(np.abs(Y_Q_F))
+
+    Y = Y_I + 1j * Y_Q
+    Y_F = np.fft.fft(Y)
+    Y_F_dB = 20 * np.log10(np.abs(Y_F))
+
+    """======================================================================="""
+    """ Filtering """
+    NUM_FILTER = 127
+    WC = 0.1 * np.pi
+    N_AXIS = np.arange(-int((NUM_FILTER - 1) // 2), int((NUM_FILTER + 1) // 2))
+    H = np.sin(WC * N_AXIS) / np.pi / N_AXIS
+    H[int((NUM_FILTER - 1) // 2)] = WC / np.pi
+
+    WIN = hamming(NUM_FILTER)
+    H_LPF = H * WIN
+    NUM = H_LPF
+    DEN = [1]
+
+    FREQ_RESPONSE = FilterModule.FilterModule.digital_bode(NUM, DEN,
+                                                           np.exp(1j * 2 * np.pi * np.linspace(-0.5, 0.5, NUM_POINT)))
+    FREQ_RESPONSE_dB = 20 * np.log10(np.abs(FREQ_RESPONSE))
+    FREQ_RESPONSE_dB = FREQ_RESPONSE_dB - np.amax(FREQ_RESPONSE_dB)
+
+    Y_I_FILTER = FilterModule.FilterModule.digital_filter(NUM, DEN, Y_I)
+    Y_I_FILTER_F = np.fft.fft(Y_I_FILTER)
+    Y_I_FILTER_F_dB = 20 * np.log10(np.abs(Y_I_FILTER_F))
+
+    Y_Q_FILTER = FilterModule.FilterModule.digital_filter(NUM, DEN, Y_Q)
+    Y_Q_FILTER_F = np.fft.fft(Y_Q_FILTER)
+    Y_Q_FILTER_F_dB = 20 * np.log10(np.abs(Y_Q_FILTER_F))
+
+    Y_FILTER = Y_I_FILTER + 1j * Y_Q_FILTER
+    Y_FILTER_F = np.fft.fft(Y_FILTER)
+    Y_FILTER_F_dB = 20 * np.log10(np.abs(Y_FILTER_F))
+
+    """======================================================================="""
+    """ Figure """
+    SPECTRUM_NUMPY = np.zeros((8, NUM_POINT), dtype=float)
+    SPECTRUM_NUMPY[0] = np.fft.fftshift(S_R_F_dB)
+    SPECTRUM_NUMPY[1] = np.fft.fftshift(Y_I_F_dB)
+    SPECTRUM_NUMPY[2] = np.fft.fftshift(Y_I_FILTER_F_dB)
+    SPECTRUM_NUMPY[3] = np.fft.fftshift(Y_F_dB)
+    SPECTRUM_NUMPY[4] = FREQ_RESPONSE_dB
+    SPECTRUM_NUMPY[5] = np.fft.fftshift(Y_Q_F_dB)
+    SPECTRUM_NUMPY[6] = np.fft.fftshift(Y_Q_FILTER_F_dB)
+    SPECTRUM_NUMPY[7] = np.fft.fftshift(Y_FILTER_F_dB)
+
+    plot_spectrum_mult(F_AXIS_SHIFT, SPECTRUM_NUMPY, SAVE_NAME)
 
     plt.show()
-    # plot_spectrum(f_axis_shift, np.fft.fftshift(S_r_f_dB), 'real - 20-30 MHz (fs = 100 MHz)', 'Spectrum')
-
-    # plot_spectrum(f_axis_shift, np.fft.fftshift(Y_I_f_dB), 'In-phase component', 'Spectrum')
-    # plot_spectrum(f_axis_shift, np.fft.fftshift(Y_Q_f_dB), 'Quadrature-phase component', 'Spectrum')
-    # plot_spectrum(f_axis_shift, np.fft.fftshift(Y_f_dB), 'IQ Demoulation (fs = 100 MHz)', 'Spectrum')
-
-    # plot_spectrum(f_axis_shift, np.fft.fftshift(Y_I_filter_dB), 'In-phase component', 'Spectrum')
-    # plot_spectrum(f_axis_shift, np.fft.fftshift(Y_Q_filter_dB), 'Quadrature-phase component', 'Spectrum')
-    # plot_spectrum(f_axis_shift, np.fft.fftshift(Y_filter_dB), 'IQ Demoulation (fs = 100 MHz)', 'Spectrum')
-
-    # fig_mag = plt.figure(figsize=(7, 4), dpi=100)
-    # ax_mag = fig_mag.add_subplot()
-    # ax_mag.set_title('Magnitude of Frequency Response', fontsize=12)
-    # ax_mag.set_xlabel('log w', fontsize=10)
-    # ax_mag.set_ylabel('Magnitude - dB', fontsize=10)
-    # ax_mag.plot(np.linspace(-0.5, 0.5, num_point), 20 * np.log10(np.abs(freq_response)), label='filter module')
-    # plt.tick_params(labelsize=10)
-    # labels = ax_mag.get_xticklabels() + ax_mag.get_yticklabels()
-    # [label.set_fontname('Times New Roman') for label in labels]
-    # plt.ylim(-60, 0)
-    # plt.grid()
-    # plt.legend(fontsize=8, loc='lower right')
 
 
 
