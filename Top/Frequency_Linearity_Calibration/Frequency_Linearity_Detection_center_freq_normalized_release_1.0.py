@@ -289,12 +289,12 @@ if __name__ == '__main__':
     [label.set_fontname('Times New Roman') for label in labels]
 
     ax_spec = fig_spec.add_subplot(num_row, num_col, 4)
-    ax_spec.set_title('Fig.4 - Phase Un-Wrapping',
+    ax_spec.set_title('Fig.4 - Estimated Frequency from Un-Wrapping ideal and real phase',
                       fontsize=25, fontproperties=font_times)
     ax_spec.set_xlabel('time - us', fontsize=22, fontproperties=font_times)
     ax_spec.set_ylabel('Freq', fontsize=22, fontproperties=font_times)
-    ax_spec.plot(T_AXIS[1:] / us, REAL_FREQ_EST_UNWRAP / MHz, 'orange', linewidth=1, label='real freq')
-    ax_spec.plot(T_AXIS[1:] / us, IDEAL_FREQ_UNWRAP / MHz, 'b', linewidth=3, label='real alias freq')
+    ax_spec.plot(T_AXIS[1:] / us, REAL_FREQ_EST_UNWRAP / MHz, 'orange', linewidth=1, label='real alias freq')
+    ax_spec.plot(T_AXIS[1:] / us, IDEAL_FREQ_UNWRAP / MHz, 'b', linewidth=3, label='ideal alias freq')
     plt.legend(fontsize=22)
     plt.tick_params(labelsize=22)
     labels = ax_spec.get_xticklabels() + ax_spec.get_yticklabels()
