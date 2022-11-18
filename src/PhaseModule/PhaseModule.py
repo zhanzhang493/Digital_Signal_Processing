@@ -88,8 +88,9 @@ class PhaseModule:
         num_point = len(i_np)
         ang_np = np.zeros(num_point, dtype=float)
         for k in range(num_point):
-            ang_np[k] = PhaseModule.phase_estimator_single_point(i_np[k], q_np[k])
+            # ang_np[k] = PhaseModule.phase_estimator_single_point(i_np[k], q_np[k])
             # ang_np[k] = PhaseModule.phase_estimator_single_point_cordic(i_np[k], q_np[k], 12)
+            ang_np[k] = PhaseModule.phase_estimator_single_point_cordic_normalized(i_np[k], q_np[k], 16)
 
         return ang_np
 
@@ -209,6 +210,56 @@ class PhaseModule:
         return angle_out
 
     @staticmethod
+    def phase_estimator_single_point_cordic_normalized(i, q, n):
+        n_axis = np.arange(n)
+        tan_table = (1/2) ** n_axis
+        angle_lut = np.arctan(tan_table) / np.pi / 2
+        amp = np.ones(n, dtype=float)
+        for k in range(n):
+            amp[k] = 1/np.sqrt(1 + 2 ** (-2 * k))
+
+        mag = np.sqrt(i ** 2 + q ** 2)
+        if mag == 0:
+            x = i
+            y = q
+        else:
+            x = i / mag
+            y = q / mag
+
+        """ CorDic approach"""
+        if (x == 0) and (y == 0):
+            radian_out = 0
+        else:
+            if x > 0:
+                if y <= 0:
+                    phase_shift = 1
+                else:
+                    phase_shift = 0
+            else:
+                phase_shift = 0.5
+                x = -x
+                y = -y
+
+            angle_accumulate = phase_shift
+
+            for k in range(n):
+                x_tmp = x
+                if y < 0:
+                    x = amp[k] * (x_tmp - y * 2 ** (-k))
+                    y = amp[k] * (y + x_tmp * 2 ** (-k))
+                    angle_accumulate = angle_accumulate - angle_lut[k]
+                else:
+                    x = amp[k] * (x_tmp + y * 2 ** (-k))
+                    y = amp[k] * (y - x_tmp * 2 ** (-k))
+                    angle_accumulate = angle_accumulate + angle_lut[k]
+
+            radian_out = angle_accumulate
+
+        angle_out = radian_out
+
+        return angle_out
+
+    @staticmethod
     def zero_one(ang):
         if (ang > 0.9999) and (ang < 1.0001):
             ang = 0
@@ -238,6 +289,8 @@ if __name__ == '__main__':
     print(PhaseModule.phase_to_zero_one(np.angle(COMPLEX)))
     print(PhaseModule.phase_estimator_single_point(I, Q))
     print(PhaseModule.phase_estimator_single_point_cordic(I, Q, 12))
+    print(PhaseModule.phase_estimator_single_point_cordic_normalized(I, Q, 16))
+
 
     I = 1
     Q = -1
@@ -246,6 +299,7 @@ if __name__ == '__main__':
     print(PhaseModule.phase_to_zero_one(np.angle(COMPLEX)))
     print(PhaseModule.phase_estimator_single_point(I, Q))
     print(PhaseModule.phase_estimator_single_point_cordic(I, Q, 12))
+    print(PhaseModule.phase_estimator_single_point_cordic_normalized(I, Q, 12))
 
     I = -1
     Q = 1
@@ -254,6 +308,7 @@ if __name__ == '__main__':
     print(PhaseModule.phase_to_zero_one(np.angle(COMPLEX)))
     print(PhaseModule.phase_estimator_single_point(I, Q))
     print(PhaseModule.phase_estimator_single_point_cordic(I, Q, 12))
+    print(PhaseModule.phase_estimator_single_point_cordic_normalized(I, Q, 12))
 
     I = -1
     Q = -1
@@ -262,6 +317,7 @@ if __name__ == '__main__':
     print(PhaseModule.phase_to_zero_one(np.angle(COMPLEX)))
     print(PhaseModule.phase_estimator_single_point(I, Q))
     print(PhaseModule.phase_estimator_single_point_cordic(I, Q, 12))
+    print(PhaseModule.phase_estimator_single_point_cordic_normalized(I, Q, 12))
 
     I = -1
     Q = 0
@@ -270,6 +326,7 @@ if __name__ == '__main__':
     print(PhaseModule.phase_to_zero_one(np.angle(COMPLEX)))
     print(PhaseModule.phase_estimator_single_point(I, Q))
     print(PhaseModule.phase_estimator_single_point_cordic(I, Q, 12))
+    print(PhaseModule.phase_estimator_single_point_cordic_normalized(I, Q, 12))
 
     I = 0
     Q = -1
@@ -278,6 +335,7 @@ if __name__ == '__main__':
     print(PhaseModule.phase_to_zero_one(np.angle(COMPLEX)))
     print(PhaseModule.phase_estimator_single_point(I, Q))
     print(PhaseModule.phase_estimator_single_point_cordic(I, Q, 12))
+    print(PhaseModule.phase_estimator_single_point_cordic_normalized(I, Q, 12))
 
     I = 1
     Q = 0
@@ -286,6 +344,7 @@ if __name__ == '__main__':
     print(PhaseModule.phase_to_zero_one(np.angle(COMPLEX)))
     print(PhaseModule.phase_estimator_single_point(I, Q))
     print(PhaseModule.phase_estimator_single_point_cordic(I, Q, 12))
+    print(PhaseModule.phase_estimator_single_point_cordic_normalized(I, Q, 12))
 
     I = 0
     Q = 1
@@ -294,6 +353,7 @@ if __name__ == '__main__':
     print(PhaseModule.phase_to_zero_one(np.angle(COMPLEX)))
     print(PhaseModule.phase_estimator_single_point(I, Q))
     print(PhaseModule.phase_estimator_single_point_cordic(I, Q, 12))
+    print(PhaseModule.phase_estimator_single_point_cordic_normalized(I, Q, 12))
 
     I = 0.4
     Q = 0.9
@@ -303,6 +363,7 @@ if __name__ == '__main__':
     print(PhaseModule.phase_estimator_single_point(I, Q))
     print(PhaseModule.phase_estimator_single_point_cordic(I, Q, 12))
     print(PhaseModule.phase_estimator_single_point_cordic(I, Q, 14))
+    print(PhaseModule.phase_estimator_single_point_cordic_normalized(I, Q, 12))
 
     """ test -pi, pi
     print(PhaseModule.phase_wrapping_single_point(3 * np.pi))
