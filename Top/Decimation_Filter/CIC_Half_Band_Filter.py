@@ -14,6 +14,12 @@ us = 1e-6
 ns = 1e-9
 
 
+def hamming(num_order):
+    n = np.arange(num_order)
+    win = 0.54 - 0.46 * np.cos(2 * np.pi * n / (num_order - 1))
+    return win
+
+
 def cic_filter(num_fitler, num_spec):
     h = np.zeros(num_fitler+1, dtype=int)
     h[0] = 1
@@ -43,6 +49,8 @@ def half_band_filter(num_filter, num_spec):
     n = np.arange(-int((num_filter - 1) // 2), int((num_filter + 1) // 2))
     h = np.sin(np.pi/2 * n) / np.pi / n
     h[int((num_filter - 1) // 2)] = 0.5
+    # win = hamming(num_filter)
+    # h = h * win
     a = [1]
 
     freq_response = FilterModule.FilterModule.digital_bode(h, a,
@@ -96,7 +104,7 @@ if __name__ == '__main__':
     f_axis_shift = np.arange(-int(NUM_SPEC / 2), int(NUM_SPEC / 2)) / NUM_SPEC
     
     fig_spec = plt.figure(figsize=(31.5, 6), dpi=50)
-    plt.subplots_adjust(left=0.05, bottom=0.15, right=0.95, top=0.85, wspace=0.25, hspace=0.25)
+    plt.subplots_adjust(left=0.05, bottom=0.15, right=0.95, top=0.85, wspace=0.13, hspace=0.25)
     num_col = 3
     num_row = 1
     ax_spec = fig_spec.add_subplot(num_row, num_col, 1)
@@ -198,29 +206,29 @@ if __name__ == '__main__':
     
     """##############################################################################################################"""
     """Half band filter"""
-    NUM_ORDER = 13
+    NUM_ORDER = 11
     N_AXIS = np.arange(-int((NUM_ORDER - 1) // 2), int((NUM_ORDER + 1) // 2))
     COE_HALF_BAND, FREQ_RESPONSE_HALF_BAND = half_band_filter(NUM_ORDER, NUM_SPEC)
     FREQ_RESPONSE_HALF_BAND_dB = 20 * np.log10(np.abs(FREQ_RESPONSE_HALF_BAND))
     FREQ_RESPONSE_HALF_BAND_RELATIVE_dB = FREQ_RESPONSE_HALF_BAND_dB - np.amax(FREQ_RESPONSE_HALF_BAND_dB)
     H = COE_HALF_BAND[0]
 
-    NUM_ORDER = 25
-    N_AXIS_25 = np.arange(-int((NUM_ORDER - 1) // 2), int((NUM_ORDER + 1) // 2))
-    COE_HALF_BAND_25, FREQ_RESPONSE_HALF_BAND_25 = half_band_filter(NUM_ORDER, NUM_SPEC)
-    FREQ_RESPONSE_HALF_BAND_25_dB = 20 * np.log10(np.abs(FREQ_RESPONSE_HALF_BAND_25))
-    FREQ_RESPONSE_HALF_BAND_25_RELATIVE_dB = FREQ_RESPONSE_HALF_BAND_25_dB - np.amax(FREQ_RESPONSE_HALF_BAND_25_dB)
-    H_25 = COE_HALF_BAND_25[0]
+    NUM_ORDER = 27
+    N_AXIS_27 = np.arange(-int((NUM_ORDER - 1) // 2), int((NUM_ORDER + 1) // 2))
+    COE_HALF_BAND_27, FREQ_RESPONSE_HALF_BAND_27 = half_band_filter(NUM_ORDER, NUM_SPEC)
+    FREQ_RESPONSE_HALF_BAND_27_dB = 20 * np.log10(np.abs(FREQ_RESPONSE_HALF_BAND_27))
+    FREQ_RESPONSE_HALF_BAND_27_RELATIVE_dB = FREQ_RESPONSE_HALF_BAND_27_dB - np.amax(FREQ_RESPONSE_HALF_BAND_27_dB)
+    H_27 = COE_HALF_BAND_27[0]
 
-    NUM_ORDER = 49
-    N_AXIS_49 = np.arange(-int((NUM_ORDER - 1) // 2), int((NUM_ORDER + 1) // 2))
-    COE_HALF_BAND_49, FREQ_RESPONSE_HALF_BAND_49 = half_band_filter(NUM_ORDER, NUM_SPEC)
-    FREQ_RESPONSE_HALF_BAND_49_dB = 20 * np.log10(np.abs(FREQ_RESPONSE_HALF_BAND_49))
-    FREQ_RESPONSE_HALF_BAND_49_RELATIVE_dB = FREQ_RESPONSE_HALF_BAND_49_dB - np.amax(FREQ_RESPONSE_HALF_BAND_49_dB)
-    H_49 = COE_HALF_BAND_49[0]
+    NUM_ORDER = 51
+    N_AXIS_51 = np.arange(-int((NUM_ORDER - 1) // 2), int((NUM_ORDER + 1) // 2))
+    COE_HALF_BAND_51, FREQ_RESPONSE_HALF_BAND_51 = half_band_filter(NUM_ORDER, NUM_SPEC)
+    FREQ_RESPONSE_HALF_BAND_51_dB = 20 * np.log10(np.abs(FREQ_RESPONSE_HALF_BAND_51))
+    FREQ_RESPONSE_HALF_BAND_51_RELATIVE_dB = FREQ_RESPONSE_HALF_BAND_51_dB - np.amax(FREQ_RESPONSE_HALF_BAND_51_dB)
+    H_51 = COE_HALF_BAND_51[0]
 
     fig_spec = plt.figure(figsize=(31.5, 6), dpi=50)
-    plt.subplots_adjust(left=0.05, bottom=0.15, right=0.95, top=0.85, wspace=0.25, hspace=0.25)
+    plt.subplots_adjust(left=0.05, bottom=0.15, right=0.95, top=0.85, wspace=0.13, hspace=0.25)
     num_col = 3
     num_row = 1
     ax_spec = fig_spec.add_subplot(num_row, num_col, 1)
@@ -230,9 +238,9 @@ if __name__ == '__main__':
     ax_spec.set_xlabel('n', fontsize=10, fontproperties=font_times)
     ax_spec.set_ylabel('Amplitude', fontsize=10, fontproperties=font_times)
     # ax_spec.plot(f_axis_shift, FREQ_RESPONSE_HALF_BAND_RELATIVE_dB, 'k', linewidth=1.5, label='Half-band filter')
-    ax_spec.plot(N_AXIS, H, 'ko-', linewidth=1.5, label='M = 13')
-    ax_spec.plot(N_AXIS_25, H_25, 'bx--', linewidth=1.5, label='M = 25')
-    ax_spec.plot(N_AXIS_49, H_49, 'rv--', linewidth=1.5, label='M = 49')
+    ax_spec.plot(N_AXIS, H, 'ko-', linewidth=1.5, label='M = 11')
+    ax_spec.plot(N_AXIS_27, H_27, 'bx--', linewidth=1.5, label='M = 27')
+    ax_spec.plot(N_AXIS_51, H_51, 'rv--', linewidth=1.5, label='M = 51')
     plt.legend(fontsize=8)
     plt.tick_params(labelsize=10)
     plt.grid('on')
@@ -245,9 +253,9 @@ if __name__ == '__main__':
                       fontsize=12, fontproperties=font_times)
     ax_spec.set_xlabel('Freq - [-0.5, 0.5]', fontsize=10, fontproperties=font_times)
     ax_spec.set_ylabel('Magnitude', fontsize=10, fontproperties=font_times)
-    ax_spec.plot(f_axis_shift, np.abs(FREQ_RESPONSE_HALF_BAND), 'k', linewidth=1.5, label='M = 13')
-    ax_spec.plot(f_axis_shift, np.abs(FREQ_RESPONSE_HALF_BAND_25), 'b', linewidth=1.5, label='M = 25')
-    ax_spec.plot(f_axis_shift, np.abs(FREQ_RESPONSE_HALF_BAND_49), 'r', linewidth=1.5, label='M = 49')
+    ax_spec.plot(f_axis_shift, np.abs(FREQ_RESPONSE_HALF_BAND), 'k', linewidth=1.5, label='M = 11')
+    ax_spec.plot(f_axis_shift, np.abs(FREQ_RESPONSE_HALF_BAND_27), 'b', linewidth=1.5, label='M = 27')
+    ax_spec.plot(f_axis_shift, np.abs(FREQ_RESPONSE_HALF_BAND_51), 'r', linewidth=1.5, label='M = 51')
     plt.legend(fontsize=8)
     plt.tick_params(labelsize=10)
     plt.grid('on')
@@ -260,13 +268,13 @@ if __name__ == '__main__':
                       fontsize=12, fontproperties=font_times)
     ax_spec.set_xlabel('Freq - [-0.5, 0.5]', fontsize=10, fontproperties=font_times)
     ax_spec.set_ylabel('Magnitude - dB', fontsize=10, fontproperties=font_times)
-    ax_spec.plot(f_axis_shift, FREQ_RESPONSE_HALF_BAND_RELATIVE_dB, 'k', linewidth=3, label='M = 13')
-    ax_spec.plot(f_axis_shift, FREQ_RESPONSE_HALF_BAND_25_RELATIVE_dB, 'b', linewidth=2, label='M = 25')
-    ax_spec.plot(f_axis_shift, FREQ_RESPONSE_HALF_BAND_49_RELATIVE_dB, 'r--', linewidth=1.5, label='M = 49')
+    ax_spec.plot(f_axis_shift, FREQ_RESPONSE_HALF_BAND_RELATIVE_dB, 'k', linewidth=3, label='M = 11')
+    ax_spec.plot(f_axis_shift, FREQ_RESPONSE_HALF_BAND_27_RELATIVE_dB, 'b', linewidth=2, label='M = 27')
+    ax_spec.plot(f_axis_shift, FREQ_RESPONSE_HALF_BAND_51_RELATIVE_dB, 'r--', linewidth=1.5, label='M = 51')
     plt.legend(fontsize=8)
     plt.tick_params(labelsize=10)
     plt.grid('on')
-    plt.ylim(-60, 1)
+    plt.ylim(-100, 1)
     labels = ax_spec.get_xticklabels() + ax_spec.get_yticklabels()
     [label.set_fontname('Times New Roman') for label in labels]
     
