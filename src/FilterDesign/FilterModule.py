@@ -1,4 +1,9 @@
 import numpy as np
+from scipy import signal
+import matplotlib.pyplot as plt
+from matplotlib.patches import Circle
+import matplotlib.font_manager as fm
+font_times = fm.FontProperties(family='Times New Roman', stretch=0)
 
 
 class FilterModule:
@@ -40,6 +45,36 @@ class FilterModule:
             opt[idx] = y[0]
 
         return opt
+
+    @staticmethod
+    def cal_zeros_poles(num, den):
+        z, p, k = signal.tf2zpk(num, den)
+        return z, p, k
+
+    @staticmethod
+    def zplane(num, den):
+        z, p, k = FilterModule.cal_zeros_poles(num, den)
+        fig = plt.figure(figsize=(5, 5), dpi=100)
+        ax = fig.add_subplot()
+        ax.set_title('Z Plane of System Function', fontsize=12, fontproperties=font_times)
+        ax.set_xlabel('Real', fontsize=10, fontproperties=font_times)
+        ax.set_ylabel('Imag', fontsize=10, fontproperties=font_times)
+        circle = Circle(xy=(0.0, 0.0), radius=1, alpha=0.9, facecolor='white')
+        theta = np.linspace(0, 2 * np.pi, 200)
+        x = np.cos(theta)
+        y = np.sin(theta)
+        ax.add_patch(circle)
+        ax.plot(x, y, color="k", linewidth=1.5)
+        lim = max(max(z), max(p), 1) + 1
+        plt.xlim(-lim, lim)
+        plt.ylim(-lim, lim)
+
+        ax.plot(z.real, z.imag, linestyle='none', ms=5, markeredgecolor='b', markerfacecolor='none',
+                marker='o', label='zeros')
+        ax.plot(p.real, p.imag, linestyle='none', ms=5, markeredgecolor='r', markerfacecolor='none',
+                marker='x', label='poles')
+        plt.legend()
+        return z, p, k
 
     @staticmethod
     def analog_bode(num, den, freq):
@@ -184,5 +219,11 @@ if __name__ == '__main__':
     ax_filter.set_xlabel('Time', fontsize=10)
     ax_filter.set_ylabel('Volts', fontsize=10)
     plt.legend()
+
+    num = [1, 2, 3]
+    den = [1, -1]
+    ZEROS, POLES, GAIN = FilterModule.cal_zeros_poles(num, den)
+    print(ZEROS, POLES, GAIN)
+    FilterModule.zplane(num, den)
 
     plt.show()
