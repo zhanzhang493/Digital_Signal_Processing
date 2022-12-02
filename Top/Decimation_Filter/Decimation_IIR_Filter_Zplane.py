@@ -23,8 +23,12 @@ tick_font = 20
 
 def plot_sub(z, p, qz, qp, fig, num_row, num_col, sub_fig):
     ax = fig.add_subplot(num_row, num_col, sub_fig)
-    ax.set_title('Fig.' + str(SUB_FIG) + ' - Zplane of SOS ' + str(k),
-                 fontsize=title_font, fontproperties=font_times)
+    if sub_fig == 5 or sub_fig == 10 or sub_fig == 15:
+        ax.set_title('Fig.' + str(SUB_FIG) + ' - Zplane of Cascade SOS',
+                     fontsize=title_font, fontproperties=font_times)
+    else:
+        ax.set_title('Fig.' + str(SUB_FIG) + ' - Zplane of SOS ' + str(k),
+                     fontsize=title_font, fontproperties=font_times)
     ax.set_xlabel('Re', fontsize=label_font, fontproperties=font_times)
     ax.set_ylabel('Im', fontsize=label_font, fontproperties=font_times)
     circle = Circle(xy=(0.0, 0.0), radius=1, alpha=0.9, facecolor='white')
