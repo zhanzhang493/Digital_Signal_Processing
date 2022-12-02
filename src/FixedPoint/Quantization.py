@@ -13,8 +13,21 @@ class Quantizer:
         pass
 
     @staticmethod
-    def float_to_fix_single_point(x, bit_width, integer, signed, q_mode, o_mode):
-        pass
+    def float_to_fix_single_point(x, bit_width, integer, signed, q_mode='rnd_zero', o_mode='sat_sym'):
+        assert isinstance(bit_width, int) and isinstance(integer, int)
+        if o_mode == 'sat_sym':
+            x1 = Quantizer.sat_sym(x, bit_width, integer, signed)
+
+        fraction = bit_width - integer
+        x2 = x1 * (2**fraction)
+
+        if q_mode == 'rnd_zero':
+            x3 = Quantizer.rnd_zero(x2)
+
+        y = x3 / (2**fraction)
+        z = hex(x3 & (2**bit_width - 1))
+
+        return x, y, z
 
     """##############################################################################################################"""
     """Quantization modes for ac_fixed"""
@@ -34,6 +47,7 @@ class Quantizer:
     """Overflow modes for ac_fixed"""
     @staticmethod
     def sat_sym(x, bit_width, integer, signed=True):
+        assert isinstance(bit_width, int) and isinstance(integer, int)
         assert bit_width >= integer >= 0
         if not signed:
             max_value = (1 - (2 ** (-bit_width))) * (2 ** integer)
@@ -82,3 +96,10 @@ if __name__ == '__main__':
     Y = Quantizer.sat_sym(X, 5, 5)
     print(Y)
 
+    X = -0.388190791409149
+    X, Y, Z = Quantizer.float_to_fix_single_point(X, 8, 2, True)
+    print(X, Y, Z)
+
+    X = 2
+    X, Y, Z = Quantizer.float_to_fix_single_point(X, 8, 2, True)
+    print(X, Y, Z)
