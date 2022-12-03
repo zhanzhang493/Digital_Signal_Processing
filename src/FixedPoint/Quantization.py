@@ -13,6 +13,16 @@ class Quantizer:
         pass
 
     @staticmethod
+    def float_to_fix_1d(x, bit_width, integer, signed, q_mode='rnd_zero', o_mode='sat_sym'):
+        num_point = len(x)
+        y = np.zeros(num_point, dtype=float)
+        z = list()
+        for k in range(num_point):
+            _, y[k], fix_point = Quantizer.float_to_fix_single_point(x[k], bit_width, integer, signed, q_mode, o_mode)
+            z.append(fix_point)
+        return x, y, z
+
+    @staticmethod
     def float_to_fix_single_point(x, bit_width, integer, signed, q_mode='rnd_zero', o_mode='sat_sym'):
         assert isinstance(bit_width, int) and isinstance(integer, int)
         if o_mode == 'sat_sym':
@@ -100,6 +110,26 @@ if __name__ == '__main__':
     X, Y, Z = Quantizer.float_to_fix_single_point(X, 8, 2, True)
     print(X, Y, Z)
 
-    X = 2
+    X = 2.5
     X, Y, Z = Quantizer.float_to_fix_single_point(X, 8, 2, True)
     print(X, Y, Z)
+    print(type(Z))
+
+    a1 = [-0.388190791409149, -0.285741152113574, -0.138801927534664, -0.025907440076305]
+    X, Y, Z = Quantizer.float_to_fix_1d(a1, 8, 2, True)
+    print(X)
+    print(Y)
+    print(Z)
+
+    a2 = [0.057398668463065, 0.186286541864827, 0.4230987127079, 0.76740478730534]
+    X, Y, Z = Quantizer.float_to_fix_1d(a2, 8, 0, False)
+    print(X)
+    print(Y)
+    print(Z)
+
+    b1 = [1.917977679727313, 1.419457762233652, 0.897984940087441, 0.615899604416527]
+    X, Y, Z = Quantizer.float_to_fix_1d(b1, 8, 2, True)
+    print(X)
+    print(Y)
+    print(Z)
+
