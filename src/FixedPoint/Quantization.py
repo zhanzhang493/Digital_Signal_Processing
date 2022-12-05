@@ -1,5 +1,5 @@
 import math
-
+import re
 import numpy as np
 import math
 import matplotlib.font_manager as fm
@@ -12,6 +12,43 @@ class Quantizer:
     def __init__(self):
         pass
 
+    """##############################################################################################################"""
+    """ Hex or Binary to Decimal"""
+    @staticmethod
+    def hex_to_dec_single_point(x, bit_width, integer, signed):
+        assert re.match(r'(0)(x)([\d a-fA-F]+)', x)
+        m = re.match(r'(0)(x)([\d a-fA-F]+)', x)
+        assert bit_width >= integer >= 0
+        fraction = bit_width - integer
+        if not signed:
+            y = eval('0' + 'x' + m.group(3)) / (2**fraction)
+        else:
+            tmp = eval('0' + 'x' + m.group(3))
+            if tmp >= 2 ** (bit_width - 1):
+                y = (tmp - 2 ** bit_width) / (2 ** fraction)
+            else:
+                y = tmp / (2**fraction)
+        return y
+
+    @staticmethod
+    def bin_to_dec_single_point(x, bit_width, integer, signed):
+        assert re.match(r'(0)(b)([0-1]+)', x)
+        m = re.match(r'(0)(b)([0-1]+)', x)
+        assert len(m.group(3)) <= bit_width
+        assert bit_width >= integer >= 0
+        fraction = bit_width - integer
+        if not signed:
+            y = eval('0' + 'b' + m.group(3)) / (2**fraction)
+        else:
+            tmp = eval('0' + 'b' + m.group(3))
+            if tmp >= 2 ** (bit_width - 1):
+                y = (tmp - 2 ** bit_width) / (2**fraction)
+            else:
+                y = tmp / (2**fraction)
+        return y
+
+    """##############################################################################################################"""
+    """ float-point to fixed-point"""
     @staticmethod
     def float_to_fix_1d(x, bit_width, integer, signed, q_mode='rnd_zero', o_mode='sat_sym'):
         num_point = len(x)
@@ -162,4 +199,16 @@ if __name__ == '__main__':
     Y = Quantizer.sat_sym(X, 5, 4)
     Z = Quantizer.sat(X, 5, 4)
     print(X, Y, Z)
+
+    X = Quantizer.bin_to_dec_single_point('0b11111110', 8, 2, True)
+    print(X)
+
+    X = Quantizer.hex_to_dec_single_point('0xfe', 8, 2, True)
+    print(X)
+
+    X = Quantizer.bin_to_dec_single_point('0b111001', 8, 2, True)
+    print(X)
+
+    X = Quantizer.hex_to_dec_single_point('0xf', 8, 0, False)
+    print(X)
 
