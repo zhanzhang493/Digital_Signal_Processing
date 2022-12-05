@@ -56,6 +56,30 @@ class Quantizer:
     """##############################################################################################################"""
     """Overflow modes for ac_fixed"""
     @staticmethod
+    def sat(x, bit_width, integer, signed=True):
+        assert isinstance(bit_width, int) and isinstance(integer, int)
+        assert bit_width >= integer >= 0
+        if not signed:
+            max_value = (1 - (2 ** (-bit_width))) * (2 ** integer)
+            min_value = 0
+        elif signed:
+            max_value = (0.5 - (2 ** (-bit_width))) * (2 ** integer)
+            min_value = -0.5 * (2 ** integer)
+        else:
+            print('Sign info is wrong.\n')
+            max_value = (0.5 - (2 ** (-bit_width))) * (2 ** integer)
+            min_value = -0.5 * (2 ** integer)
+
+        if x > max_value:
+            y = max_value
+        elif x < min_value:
+            y = min_value
+        else:
+            y = x
+
+        return y
+
+    @staticmethod
     def sat_sym(x, bit_width, integer, signed=True):
         assert isinstance(bit_width, int) and isinstance(integer, int)
         assert bit_width >= integer >= 0
@@ -102,10 +126,6 @@ if __name__ == '__main__':
     X = -2.6
     print(int(X), round(X), math.floor(X), math.ceil(X))
 
-    X = 16
-    Y = Quantizer.sat_sym(X, 5, 5)
-    print(Y)
-
     X = -0.388190791409149
     X, Y, Z = Quantizer.float_to_fix_single_point(X, 8, 2, True)
     print(X, Y, Z)
@@ -132,4 +152,14 @@ if __name__ == '__main__':
     print(X)
     print(Y)
     print(Z)
+
+    X = 7.5
+    Y = Quantizer.sat_sym(X, 5, 4)
+    Z = Quantizer.sat(X, 5, 4)
+    print(X, Y, Z)
+
+    X = -8
+    Y = Quantizer.sat_sym(X, 5, 4)
+    Z = Quantizer.sat(X, 5, 4)
+    print(X, Y, Z)
 
