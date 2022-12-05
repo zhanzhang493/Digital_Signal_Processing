@@ -100,6 +100,56 @@ def decimation_IIR_filter_float(coe, ipt):
     return opt
 
 
+def decimation_IIR_filter_fix_coe(coe, ipt):
+    # coe 0, 1, 2: b1, a1, a2
+    assert len(coe) == 3
+
+    coe_fixed = np.zeros(3, dtype=float)
+    coe_hex = []
+    _, coe_fixed[0], fix_point = Quantization.Quantizer.float_to_fix_single_point(coe[0], 8, 2, True)
+    coe_hex.append(fix_point)
+    _, coe_fixed[1], fix_point = Quantization.Quantizer.float_to_fix_single_point(coe[1], 8, 2, True)
+    coe_hex.append(fix_point)
+    _, coe_fixed[2], fix_point = Quantization.Quantizer.float_to_fix_single_point(coe[2], 8, 0, False)
+    coe_hex.append(fix_point)
+
+    num_u = 3
+    num_y = 3
+
+    u = np.zeros(num_u)
+    y = np.zeros(num_y)
+
+    opt = np.zeros(np.shape(ipt))
+
+    for idx, value in np.ndenumerate(ipt):
+        u[0] = value
+
+        y[0] = 0
+
+        u0_tmp = u[0]
+        u1_tmp = u[1] * coe_fixed[0]
+        u2_tmp = u[2]
+
+        y1_tmp = y[1] * coe_fixed[1]
+        y2_tmp = y[2] * coe_fixed[2]
+
+        uy2_tmp = u2_tmp - y2_tmp
+
+        uy1_tmp = u1_tmp + y1_tmp + uy2_tmp
+
+        y[0] = u0_tmp + uy1_tmp
+
+        for uidx in range(num_u - 1):
+            u[num_u - uidx - 1] = u[num_u - uidx - 2]
+
+        for yidx in range(num_y - 1):
+            y[num_y - yidx - 1] = y[num_y - yidx - 2]
+
+        opt[idx] = y[0]
+
+    return coe_fixed, coe_hex, opt
+
+
 def decimation_IIR_filter(coe, ipt):
     # coe 0, 1, 2: b1, a1, a2
     assert len(coe) == 3
@@ -206,9 +256,10 @@ def plot_4_cascade_IIR(ipt_float, a1, a2, b1, s, final_scal):
         ipt_fixed = ipt_fixed * s[k]
         ipt_float = ipt_float * s[k]
 
-        coe_fixed, coe_hex, opt_fixed = decimation_IIR_filter(coe, ipt_fixed)
+        # coe_fixed, coe_hex, opt_fixed = decimation_IIR_filter(coe, ipt_fixed)
+        coe_fixed, coe_hex, opt_fixed = decimation_IIR_filter_fix_coe(coe, ipt_fixed)
         opt_float = decimation_IIR_filter_float(coe, ipt_float)
-        opt = digital_filter(dec2_num, dec_den, ipt_float)
+        # opt = digital_filter(dec2_num, dec_den, ipt_float)
 
         if k == 3:
             opt_fixed = opt_fixed * final_scal
@@ -271,7 +322,7 @@ if __name__ == '__main__':
     # print(Z)
 
     plot_4_cascade_IIR(IPT, A1, A2, B1, S, FS)
-    plt.savefig('Decimation_IIR_Filter_Quantization_stable_Dec2.pdf')
+    # plt.savefig('Decimation_IIR_Filter_Quantization_stable_Dec2.pdf')
 
     """##############################################################################################################"""
     """ dec 4 """
@@ -288,7 +339,7 @@ if __name__ == '__main__':
     print(Z)
 
     plot_4_cascade_IIR(IPT, A1, A2, B1, S, FS)
-    plt.savefig('Decimation_IIR_Filter_Quantization_stable_Dec4.pdf')
+    # plt.savefig('Decimation_IIR_Filter_Quantization_stable_Dec4.pdf')
 
     """##############################################################################################################"""
     """ dec 8 """
@@ -305,6 +356,6 @@ if __name__ == '__main__':
     print(Z)
 
     plot_4_cascade_IIR(IPT, A1, A2, B1, S, FS)
-    plt.savefig('Decimation_IIR_Filter_Quantization_stable_Dec8.pdf')
+    # plt.savefig('Decimation_IIR_Filter_Quantization_stable_Dec8.pdf')
 
     plt.show()
