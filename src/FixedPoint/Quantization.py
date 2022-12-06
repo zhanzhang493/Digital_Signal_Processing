@@ -15,6 +15,14 @@ class Quantizer:
     """##############################################################################################################"""
     """ Hex or Binary to Decimal"""
     @staticmethod
+    def hex_to_dec(x, bit_width, integer, signed):
+        num_point = len(x)
+        y = np.zeros(num_point, dtype=float)
+        for k in range(num_point):
+            y[k] = Quantizer.hex_to_dec_single_point(x[k], bit_width, integer, signed)
+        return y
+
+    @staticmethod
     def hex_to_dec_single_point(x, bit_width, integer, signed):
         assert re.match(r'(0)(x)([\d a-fA-F]+)', x)
         m = re.match(r'(0)(x)([\d a-fA-F]+)', x)
@@ -28,6 +36,14 @@ class Quantizer:
                 y = (tmp - 2 ** bit_width) / (2 ** fraction)
             else:
                 y = tmp / (2**fraction)
+        return y
+
+    @staticmethod
+    def bin_to_dec(x, bit_width, integer, signed):
+        num_point = len(x)
+        y = np.zeros(num_point, dtype=float)
+        for k in range(num_point):
+            y[k] = Quantizer.bin_to_dec_single_point(x[k], bit_width, integer, signed)
         return y
 
     @staticmethod
@@ -200,15 +216,15 @@ if __name__ == '__main__':
     Z = Quantizer.sat(X, 5, 4)
     print(X, Y, Z)
 
-    X = Quantizer.bin_to_dec_single_point('0b11111110', 8, 2, True)
-    print(X)
+    X = ['0xf', '0x30', '0x6c', '0xc4']
+    Y = Quantizer.hex_to_dec(X, 8, 0, False)
+    print(Y)
 
-    X = Quantizer.hex_to_dec_single_point('0xfe', 8, 2, True)
-    print(X)
+    X = ['0xe7', '0xee', '0xf7', '0xfe']
+    Y = Quantizer.hex_to_dec(X, 8, 2, True)
+    print(Y)
 
-    X = Quantizer.bin_to_dec_single_point('0b111001', 8, 2, True)
-    print(X)
-
-    X = Quantizer.hex_to_dec_single_point('0xf', 8, 0, False)
-    print(X)
+    X = ['0b11100111', '0b11101110', '0b11110111', '0b11111110']
+    Y = Quantizer.bin_to_dec(X, 8, 2, True)
+    print(Y)
 
