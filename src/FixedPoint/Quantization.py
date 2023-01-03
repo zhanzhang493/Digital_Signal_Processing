@@ -93,6 +93,81 @@ class Quantizer:
         return x, y, z
 
     """##############################################################################################################"""
+    """ Pseudo-floating point to float point """
+    @staticmethod
+    def mantissa_hex_to_float_single_point(x, bit_width_mantissa, integer_mantissa, signed_mantissa,
+                                           bit_width_exp, signed_exp):
+        assert re.match(r'(0)(x)([\d a-fA-F]+)', x)
+        m = re.match(r'(0)(x)([\d a-fA-F]+)', x)
+        x_bin = bin(eval('0' + 'x' + m.group(3)))
+        assert re.match(r'(0)(b)([0-1]+)', x_bin)
+        m_bin = re.match(r'(0)(b)([0-1]+)', x_bin)
+        assert len(m_bin.group(3)) <= (bit_width_mantissa + bit_width_exp)
+
+        exp = m_bin.group(3)[-bit_width_exp:]
+        man = m_bin.group(3)[:-bit_width_exp]
+
+        assert (len(exp) <= bit_width_exp) and (len(man) <= bit_width_mantissa)
+
+        exp_value = Quantizer.bin_to_dec_single_point('0' + 'b' + exp, bit_width_exp, bit_width_exp, False)
+        man_value = Quantizer.bin_to_dec_single_point('0' + 'b' + man, bit_width_mantissa,
+                                                      integer_mantissa, signed_mantissa)
+        if signed_exp:
+            y = man_value * (2 ** exp_value)
+        else:
+            y = man_value * (2 ** -exp_value)
+        return y, man, exp
+
+    @staticmethod
+    def mantissa_hex_to_float(x, bit_width_mantissa, integer_mantissa, signed_mantissa,
+                              bit_width_exp, signed_exp):
+        num_point = len(x)
+        y = np.zeros(num_point, dtype=float)
+        for k in range(num_point):
+            y[k], _, _, = Quantizer.mantissa_hex_to_float_single_point(x[k], bit_width_mantissa,
+                                                                       integer_mantissa, signed_mantissa,
+                                                                       bit_width_exp, signed_exp)
+        return y
+
+    @staticmethod
+    def complex_mantissa_hex_to_float_single_point(x, bit_width_mantissa, integer_mantissa, signed_mantissa,
+                                                   bit_width_exp, signed_exp):
+        assert re.match(r'(0)(x)([\d a-fA-F]+)', x)
+        m = re.match(r'(0)(x)([\d a-fA-F]+)', x)
+        x_bin = bin(eval('0' + 'x' + m.group(3)))
+        assert re.match(r'(0)(b)([0-1]+)', x_bin)
+        m_bin = re.match(r'(0)(b)([0-1]+)', x_bin)
+        assert len(m_bin.group(3)) <= (2 * bit_width_mantissa + bit_width_exp)
+
+        exp = m_bin.group(3)[-bit_width_exp:]
+        man_i = m_bin.group(3)[-(bit_width_exp + bit_width_mantissa):-bit_width_exp]
+        man_r = m_bin.group(3)[:-(bit_width_exp + bit_width_mantissa)]
+
+        assert (len(exp) <= bit_width_exp) and (len(man_r) <= bit_width_mantissa) and (len(man_i) <= bit_width_mantissa)
+
+        exp_value = Quantizer.bin_to_dec_single_point('0' + 'b' + exp, bit_width_exp, bit_width_exp, False)
+        man_r_value = Quantizer.bin_to_dec_single_point('0' + 'b' + man_r, bit_width_mantissa,
+                                                        integer_mantissa, signed_mantissa)
+        man_i_value = Quantizer.bin_to_dec_single_point('0' + 'b' + man_i, bit_width_mantissa,
+                                                        integer_mantissa, signed_mantissa)
+        if signed_exp:
+            y = (man_r_value + 1j * man_i_value) * (2 ** exp_value)
+        else:
+            y = (man_r_value + 1j * man_i_value) * (2 ** -exp_value)
+        return y, man_r, man_i, exp
+
+    @staticmethod
+    def complex_mantissa_hex_to_float(x, bit_width_mantissa, integer_mantissa, signed_mantissa,
+                                      bit_width_exp, signed_exp):
+        num_point = len(x)
+        y = np.zeros(num_point, dtype=complex)
+        for k in range(num_point):
+            y[k], _, _, _ = Quantizer.complex_mantissa_hex_to_float_single_point(x[k], bit_width_mantissa,
+                                                                                 integer_mantissa, signed_mantissa,
+                                                                                 bit_width_exp, signed_exp)
+        return y
+
+    """##############################################################################################################"""
     """Quantization modes for ac_fixed"""
     @staticmethod
     def trn(x):
@@ -228,3 +303,19 @@ if __name__ == '__main__':
     Y = Quantizer.bin_to_dec(X, 8, 2, True)
     print(Y)
 
+    X = '0x94706'
+    Y, MAN, EXP = Quantizer.mantissa_hex_to_float_single_point(X, 14, 1, False, 6, False)
+    print(Y)
+    print(MAN, EXP)
+
+    X = ['0x94706', '0x55827']
+    Y = Quantizer.mantissa_hex_to_float(X, 14, 1, False, 6, False)
+    print(Y)
+
+    X = '0x147a6673'
+    Y, MAN_R, MAN_I, EXP = Quantizer.complex_mantissa_hex_to_float_single_point(X, 14, 1, True, 4, False)
+    print(Y)
+
+    X = ['0x147a6673', '0x123ae3e4']
+    Y = Quantizer.complex_mantissa_hex_to_float(X, 14, 1, True, 4, False)
+    print(Y)
